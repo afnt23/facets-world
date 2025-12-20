@@ -7,13 +7,26 @@ type GalleryImage = {
   alt: string;
 };
 
-type GalleryProps = {
-  images: GalleryImage[];
+const shuffle = <T,>(items: T[]) => {
+  const array = [...items];
+  for (let i = array.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
 };
 
-export default function Gallery({ images }: GalleryProps) {
+const toAltText = (filename: string) =>
+  filename
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+export default function Gallery() {
   const [introActive, setIntroActive] = useState(true);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [images, setImages] = useState<GalleryImage[]>([]);
   const total = images.length;
 
   const close = useCallback(() => {
@@ -59,6 +72,37 @@ export default function Gallery({ images }: GalleryProps) {
     }, 1000);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadImages = async () => {
+      try {
+        const response = await fetch("/images.json");
+        if (!response.ok) {
+          throw new Error("Failed to load image manifest.");
+        }
+        const files = (await response.json()) as string[];
+        const mapped = files.map((file) => ({
+          src: encodeURI(`/pictures/${file}`),
+          alt: toAltText(file) || "Photograph",
+        }));
+        if (isMounted) {
+          setImages(shuffle(mapped));
+        }
+      } catch {
+        if (isMounted) {
+          setImages([]);
+        }
+      }
+    };
+
+    loadImages();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const activeImage = activeIndex !== null ? images[activeIndex] : null;
