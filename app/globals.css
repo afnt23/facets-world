@@ -202,6 +202,46 @@ a:focus-visible {
   padding: 0;
 }
 
+.intro-video::-webkit-media-controls,
+.intro-video::-webkit-media-controls-panel,
+.intro-video::-webkit-media-controls-play-button,
+.intro-video::-webkit-media-controls-start-playback-button,
+.intro-video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
+.intro-splash.needs-tap {
+  cursor: pointer;
+}
+
+.intro-hint {
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #f7f6f2;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .intro-splash {
+    padding: max(16px, env(safe-area-inset-top))
+      max(16px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+  }
+
+  .intro-splash .intro-video {
+    object-fit: contain;
+    background: var(--paper);
+  }
+}
+
 .lightbox-inner {
   position: relative;
   display: flex;

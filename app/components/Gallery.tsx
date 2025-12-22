@@ -20,8 +20,10 @@ type GalleryProps = {
 
 export default function Gallery({ images }: GalleryProps) {
   const [introActive, setIntroActive] = useState(true);
+  const [introNeedsTap, setIntroNeedsTap] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const introVideoRef = useRef<HTMLVideoElement | null>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeLock = useRef(false);
   const total = images.length;
@@ -70,6 +72,23 @@ export default function Gallery({ images }: GalleryProps) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!introActive || !mounted) return;
+    const video = introVideoRef.current;
+    if (!video) return;
+
+    const tryPlay = async () => {
+      try {
+        await video.play();
+        setIntroNeedsTap(false);
+      } catch {
+        setIntroNeedsTap(true);
+      }
+    };
+
+    tryPlay();
+  }, [introActive, mounted]);
 
   useEffect(() => {
     if (!introActive && activeIndex === null) return;
@@ -163,10 +182,19 @@ export default function Gallery({ images }: GalleryProps) {
       {mounted && introActive
         ? createPortal(
             <div
-              className="lightbox intro-splash"
+              className={`lightbox intro-splash${introNeedsTap ? " needs-tap" : ""}`}
               role="dialog"
               aria-modal="true"
               aria-label="Intro video"
+              onClick={() => {
+                if (!introNeedsTap) return;
+                const video = introVideoRef.current;
+                if (!video) return;
+                video
+                  .play()
+                  .then(() => setIntroNeedsTap(false))
+                  .catch(() => setIntroNeedsTap(true));
+              }}
             >
               <div className="lightbox-inner">
                 <video
@@ -176,9 +204,13 @@ export default function Gallery({ images }: GalleryProps) {
                   muted
                   playsInline
                   preload="auto"
+                  ref={introVideoRef}
                   onEnded={handleIntroEnd}
                   onError={handleIntroEnd}
                 />
+                {introNeedsTap ? (
+                  <span className="intro-hint">Tap to play</span>
+                ) : null}
               </div>
             </div>,
             document.body,
