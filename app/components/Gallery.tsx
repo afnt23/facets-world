@@ -20,7 +20,7 @@ type GalleryProps = {
 
 export default function Gallery({ images }: GalleryProps) {
   const [introActive, setIntroActive] = useState(true);
-  const [introNeedsTap, setIntroNeedsTap] = useState(false);
+  const [introPlaying, setIntroPlaying] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const introVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -78,16 +78,32 @@ export default function Gallery({ images }: GalleryProps) {
     const video = introVideoRef.current;
     if (!video) return;
 
-    const tryPlay = async () => {
-      try {
-        await video.play();
-        setIntroNeedsTap(false);
-      } catch {
-        setIntroNeedsTap(true);
+    const tryPlay = () => {
+      const attempt = video.play();
+      if (attempt && typeof attempt.catch === "function") {
+        attempt.catch(() => {
+          window.setTimeout(handleIntroEnd, 500);
+        });
       }
     };
 
+    const onCanPlay = () => {
+      tryPlay();
+    };
+
+    video.addEventListener("canplay", onCanPlay);
     tryPlay();
+
+    const fallback = window.setTimeout(() => {
+      if (video.paused) {
+        handleIntroEnd();
+      }
+    }, 3500);
+
+    return () => {
+      video.removeEventListener("canplay", onCanPlay);
+      window.clearTimeout(fallback);
+    };
   }, [introActive, mounted]);
 
   useEffect(() => {
@@ -182,35 +198,27 @@ export default function Gallery({ images }: GalleryProps) {
       {mounted && introActive
         ? createPortal(
             <div
-              className={`lightbox intro-splash${introNeedsTap ? " needs-tap" : ""}`}
+              className="lightbox intro-splash"
               role="dialog"
               aria-modal="true"
               aria-label="Intro video"
-              onClick={() => {
-                if (!introNeedsTap) return;
-                const video = introVideoRef.current;
-                if (!video) return;
-                video
-                  .play()
-                  .then(() => setIntroNeedsTap(false))
-                  .catch(() => setIntroNeedsTap(true));
-              }}
             >
               <div className="lightbox-inner">
                 <video
-                  className="intro-video"
+                  className={`intro-video${introPlaying ? " is-playing" : ""}`}
                   src={encodeURI("/My Movie 3.mp4")}
                   autoPlay
                   muted
                   playsInline
                   preload="auto"
+                  controls={false}
+                  disablePictureInPicture
+                  controlsList="nodownload noplaybackrate noremoteplayback"
                   ref={introVideoRef}
+                  onPlaying={() => setIntroPlaying(true)}
                   onEnded={handleIntroEnd}
                   onError={handleIntroEnd}
                 />
-                {introNeedsTap ? (
-                  <span className="intro-hint">Tap to play</span>
-                ) : null}
               </div>
             </div>,
             document.body,
