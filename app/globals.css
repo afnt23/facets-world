@@ -162,11 +162,17 @@ a:focus-visible {
 .lightbox {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100svh;
   background: rgba(247, 246, 242, 0.96);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 48px 6vw;
+  padding: max(24px, env(safe-area-inset-top))
+    max(6vw, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom))
+    max(6vw, env(safe-area-inset-left));
   z-index: 50;
 }
 

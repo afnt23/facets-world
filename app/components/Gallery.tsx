@@ -61,6 +61,18 @@ export default function Gallery({ images }: GalleryProps) {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const shouldLock = introActive || activeIndex !== null;
+    if (!shouldLock) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [introActive, activeIndex]);
+
   const activeImage = activeIndex !== null ? images[activeIndex] : null;
 
   return (
