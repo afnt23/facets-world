@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type TouchEvent,
+} from "react";
 import { createPortal } from "react-dom";
 
 type GalleryImage = {
@@ -16,6 +22,8 @@ export default function Gallery({ images }: GalleryProps) {
   const [introActive, setIntroActive] = useState(true);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeLock = useRef(false);
   const total = images.length;
 
   const close = useCallback(() => {
@@ -98,6 +106,41 @@ export default function Gallery({ images }: GalleryProps) {
 
   const activeImage = activeIndex !== null ? images[activeIndex] : null;
 
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    touchStart.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (!touchStart.current) return;
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStart.current.x;
+    const deltaY = touch.clientY - touchStart.current.y;
+    touchStart.current = null;
+
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) < Math.abs(deltaY)) {
+      return;
+    }
+
+    swipeLock.current = true;
+    if (deltaX < 0) {
+      showNext();
+    } else {
+      showPrev();
+    }
+
+    window.setTimeout(() => {
+      swipeLock.current = false;
+    }, 250);
+  };
+
+  const handleOverlayClick = () => {
+    if (swipeLock.current) {
+      return;
+    }
+    close();
+  };
+
   return (
     <div className="gallery">
       <div className="masonry">
@@ -148,7 +191,9 @@ export default function Gallery({ images }: GalleryProps) {
               role="dialog"
               aria-modal="true"
               aria-label="Expanded image view"
-              onClick={close}
+              onClick={handleOverlayClick}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
               <div
                 className="lightbox-inner"
@@ -159,32 +204,6 @@ export default function Gallery({ images }: GalleryProps) {
                   alt={activeImage.alt}
                   className="lightbox-image"
                 />
-                <div className="lightbox-controls">
-                  <button
-                    type="button"
-                    className="lightbox-button"
-                    onClick={showPrev}
-                    aria-label="Previous image"
-                  >
-                    Prev
-                  </button>
-                  <button
-                    type="button"
-                    className="lightbox-button"
-                    onClick={close}
-                    aria-label="Close image view"
-                  >
-                    Close
-                  </button>
-                  <button
-                    type="button"
-                    className="lightbox-button"
-                    onClick={showNext}
-                    aria-label="Next image"
-                  >
-                    Next
-                  </button>
-                </div>
               </div>
             </div>,
             document.body,

@@ -207,33 +207,6 @@ a:focus-visible {
   height: auto;
 }
 
-.lightbox-controls {
-  display: flex;
-  gap: 24px;
-  font-size: 0.7rem;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.lightbox-button {
-  background: none;
-  border: none;
-  padding: 4px 0;
-  color: inherit;
-  cursor: pointer;
-  border-bottom: 1px solid transparent;
-}
-
-.lightbox-button:hover {
-  color: var(--ink);
-  border-color: var(--ink);
-}
-
-.lightbox-button:focus-visible {
-  outline: 1px solid var(--ink);
-  outline-offset: 4px;
-}
 
 .info-section {
   padding: 40px 6vw 88px;
