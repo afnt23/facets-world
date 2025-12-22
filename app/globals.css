@@ -196,16 +196,12 @@ a:focus-visible {
   height: 100%;
   object-fit: cover;
   display: block;
-  opacity: 0;
 }
 
 .intro-splash {
   padding: 0;
 }
 
-.intro-splash .intro-video.is-playing {
-  opacity: 1;
-}
 
 .intro-video::-webkit-media-controls,
 .intro-video::-webkit-media-controls-panel,

@@ -20,12 +20,9 @@ type GalleryProps = {
 
 export default function Gallery({ images }: GalleryProps) {
   const [introActive, setIntroActive] = useState(true);
-  const [introPlaying, setIntroPlaying] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const introVideoRef = useRef<HTMLVideoElement | null>(null);
-  const introTimeout = useRef<number | null>(null);
-  const introPlayingRef = useRef(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeLock = useRef(false);
   const total = images.length;
@@ -105,35 +102,14 @@ export default function Gallery({ images }: GalleryProps) {
       tryPlay();
     };
 
-    const onPlaying = () => {
-      introPlayingRef.current = true;
-      setIntroPlaying(true);
-      if (introTimeout.current) {
-        window.clearTimeout(introTimeout.current);
-        introTimeout.current = null;
-      }
-    };
-
     video.addEventListener("canplay", onCanPlay);
-    video.addEventListener("playing", onPlaying);
 
     requestAnimationFrame(() => {
       requestAnimationFrame(tryPlay);
     });
 
-    introTimeout.current = window.setTimeout(() => {
-      if (!introPlayingRef.current) {
-        handleIntroEnd();
-      }
-    }, 2000);
-
     return () => {
       video.removeEventListener("canplay", onCanPlay);
-      video.removeEventListener("playing", onPlaying);
-      if (introTimeout.current) {
-        window.clearTimeout(introTimeout.current);
-        introTimeout.current = null;
-      }
     };
   }, [introActive, mounted, handleIntroEnd]);
 
@@ -236,7 +212,7 @@ export default function Gallery({ images }: GalleryProps) {
             >
               <div className="lightbox-inner">
                 <video
-                  className={`intro-video${introPlaying ? " is-playing" : ""}`}
+                  className="intro-video"
                   src={encodeURI("/Introvideo.mp4")}
                   autoPlay
                   muted
