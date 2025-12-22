@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 type GalleryImage = {
   src: string;
   alt: string;
+  width?: number;
+  height?: number;
 };
 
 const shuffle = <T,>(items: T[]) => {
@@ -83,10 +85,16 @@ export default function Gallery() {
         if (!response.ok) {
           throw new Error("Failed to load image manifest.");
         }
-        const files = (await response.json()) as string[];
-        const mapped = files.map((file) => ({
-          src: encodeURI(`/pictures/${file}`),
-          alt: toAltText(file) || "Photograph",
+        const files = (await response.json()) as Array<{
+          file: string;
+          width: number | null;
+          height: number | null;
+        }>;
+        const mapped = files.map((entry) => ({
+          src: encodeURI(`/pictures/${entry.file}`),
+          alt: toAltText(entry.file) || "Photograph",
+          width: entry.width ?? undefined,
+          height: entry.height ?? undefined,
         }));
         if (isMounted) {
           setImages(shuffle(mapped));
@@ -121,8 +129,10 @@ export default function Gallery() {
             <img
               src={image.src}
               alt={image.alt}
-              loading={index < 6 ? "eager" : "lazy"}
-              fetchPriority={index < 2 ? "high" : "auto"}
+              width={image.width}
+              height={image.height}
+              loading={index < 2 ? "eager" : "lazy"}
+              fetchPriority={index === 0 ? "high" : "auto"}
               decoding="async"
               className="gallery-image"
             />
