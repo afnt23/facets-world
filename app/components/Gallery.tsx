@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type GalleryImage = {
   src: string;
@@ -14,6 +15,7 @@ type GalleryProps = {
 export default function Gallery({ images }: GalleryProps) {
   const [introActive, setIntroActive] = useState(true);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
   const total = images.length;
 
   const close = useCallback(() => {
@@ -62,14 +64,35 @@ export default function Gallery({ images }: GalleryProps) {
   }, []);
 
   useEffect(() => {
-    const shouldLock = introActive || activeIndex !== null;
-    if (!shouldLock) return;
+    setMounted(true);
+  }, []);
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+  useEffect(() => {
+    if (!introActive && activeIndex === null) return;
+
+    const { body } = document;
+    const scrollY = window.scrollY;
+    const previous = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    };
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      body.style.position = previous.position;
+      body.style.top = previous.top;
+      body.style.left = previous.left;
+      body.style.right = previous.right;
+      body.style.width = previous.width;
+      window.scrollTo(0, scrollY);
     };
   }, [introActive, activeIndex]);
 
@@ -98,66 +121,75 @@ export default function Gallery({ images }: GalleryProps) {
         ))}
       </div>
 
-      {introActive ? (
-        <div
-          className="lightbox intro-splash"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Intro logo"
-        >
-          <div className="lightbox-inner">
-            <img
-              src="/logo.png"
-              alt="Facets Of The World logo"
-              className="logo-popup-image"
-            />
-          </div>
-        </div>
-      ) : null}
+      {mounted && introActive
+        ? createPortal(
+            <div
+              className="lightbox intro-splash"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Intro logo"
+            >
+              <div className="lightbox-inner">
+                <img
+                  src="/logo.png"
+                  alt="Facets Of The World logo"
+                  className="logo-popup-image"
+                />
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
-      {activeImage ? (
-        <div
-          className="lightbox"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Expanded image view"
-          onClick={close}
-        >
-          <div className="lightbox-inner" onClick={(event) => event.stopPropagation()}>
-            <img
-              src={activeImage.src}
-              alt={activeImage.alt}
-              className="lightbox-image"
-            />
-            <div className="lightbox-controls">
-              <button
-                type="button"
-                className="lightbox-button"
-                onClick={showPrev}
-                aria-label="Previous image"
+      {mounted && activeImage
+        ? createPortal(
+            <div
+              className="lightbox"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Expanded image view"
+              onClick={close}
+            >
+              <div
+                className="lightbox-inner"
+                onClick={(event) => event.stopPropagation()}
               >
-                Prev
-              </button>
-              <button
-                type="button"
-                className="lightbox-button"
-                onClick={close}
-                aria-label="Close image view"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                className="lightbox-button"
-                onClick={showNext}
-                aria-label="Next image"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+                <img
+                  src={activeImage.src}
+                  alt={activeImage.alt}
+                  className="lightbox-image"
+                />
+                <div className="lightbox-controls">
+                  <button
+                    type="button"
+                    className="lightbox-button"
+                    onClick={showPrev}
+                    aria-label="Previous image"
+                  >
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    className="lightbox-button"
+                    onClick={close}
+                    aria-label="Close image view"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    className="lightbox-button"
+                    onClick={showNext}
+                    aria-label="Next image"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
