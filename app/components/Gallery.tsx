@@ -24,6 +24,8 @@ export default function Gallery({ images }: GalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const introVideoRef = useRef<HTMLVideoElement | null>(null);
+  const introTimeout = useRef<number | null>(null);
+  const introPlayingRef = useRef(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeLock = useRef(false);
   const total = images.length;
@@ -65,9 +67,9 @@ export default function Gallery({ images }: GalleryProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeIndex, close, showNext, showPrev]);
 
-  const handleIntroEnd = () => {
+  const handleIntroEnd = useCallback(() => {
     setIntroActive(false);
-  };
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -78,11 +80,23 @@ export default function Gallery({ images }: GalleryProps) {
     const video = introVideoRef.current;
     if (!video) return;
 
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    video.setAttribute("muted", "");
+    video.setAttribute("autoplay", "");
+    video.controls = false;
+    video.disablePictureInPicture = true;
+    video.preload = "auto";
+    video.load();
+
     const tryPlay = () => {
       const attempt = video.play();
       if (attempt && typeof attempt.catch === "function") {
         attempt.catch(() => {
-          window.setTimeout(handleIntroEnd, 500);
+          handleIntroEnd();
         });
       }
     };
@@ -91,20 +105,37 @@ export default function Gallery({ images }: GalleryProps) {
       tryPlay();
     };
 
-    video.addEventListener("canplay", onCanPlay);
-    tryPlay();
+    const onPlaying = () => {
+      introPlayingRef.current = true;
+      setIntroPlaying(true);
+      if (introTimeout.current) {
+        window.clearTimeout(introTimeout.current);
+        introTimeout.current = null;
+      }
+    };
 
-    const fallback = window.setTimeout(() => {
-      if (video.paused) {
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("playing", onPlaying);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(tryPlay);
+    });
+
+    introTimeout.current = window.setTimeout(() => {
+      if (!introPlayingRef.current) {
         handleIntroEnd();
       }
-    }, 3500);
+    }, 2000);
 
     return () => {
       video.removeEventListener("canplay", onCanPlay);
-      window.clearTimeout(fallback);
+      video.removeEventListener("playing", onPlaying);
+      if (introTimeout.current) {
+        window.clearTimeout(introTimeout.current);
+        introTimeout.current = null;
+      }
     };
-  }, [introActive, mounted]);
+  }, [introActive, mounted, handleIntroEnd]);
 
   useEffect(() => {
     if (!introActive && activeIndex === null) return;
@@ -215,7 +246,6 @@ export default function Gallery({ images }: GalleryProps) {
                   disablePictureInPicture
                   controlsList="nodownload noplaybackrate noremoteplayback"
                   ref={introVideoRef}
-                  onPlaying={() => setIntroPlaying(true)}
                   onEnded={handleIntroEnd}
                   onError={handleIntroEnd}
                 />
