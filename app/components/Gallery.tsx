@@ -63,13 +63,9 @@ export default function Gallery({ images }: GalleryProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeIndex, close, showNext, showPrev]);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setIntroActive(false);
-    }, 1000);
-
-    return () => window.clearTimeout(timer);
-  }, []);
+  const handleIntroEnd = () => {
+    setIntroActive(false);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -170,13 +166,18 @@ export default function Gallery({ images }: GalleryProps) {
               className="lightbox intro-splash"
               role="dialog"
               aria-modal="true"
-              aria-label="Intro logo"
+              aria-label="Intro video"
             >
               <div className="lightbox-inner">
-                <img
-                  src="/logo.png"
-                  alt="Facets Of The World logo"
-                  className="logo-popup-image"
+                <video
+                  className="intro-video"
+                  src={encodeURI("/My Movie 3.mp4")}
+                  autoPlay
+                  muted
+                  playsInline
+                  preload="auto"
+                  onEnded={handleIntroEnd}
+                  onError={handleIntroEnd}
                 />
               </div>
             </div>,

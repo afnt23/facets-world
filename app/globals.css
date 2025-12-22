@@ -186,6 +186,22 @@ a:focus-visible {
   z-index: 60;
 }
 
+.intro-splash .lightbox-inner {
+  width: 100%;
+  height: 100%;
+}
+
+.intro-splash .intro-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.intro-splash {
+  padding: 0;
+}
+
 .lightbox-inner {
   position: relative;
   display: flex;
