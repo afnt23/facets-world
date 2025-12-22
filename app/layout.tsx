@@ -9,9 +9,8 @@ const sourceSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "Arthur Fontanelli Studio | Photography",
-  description:
-    "A minimalist photography portfolio showcasing editorial and cultural narratives.",
+  title: "Facets Of The World",
+  description: "A minimalist photography portfolio.",
 };
 
 export const viewport: Viewport = {

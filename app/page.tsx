@@ -7,6 +7,12 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
+type ImageManifestEntry = {
+  file: string;
+  width?: number;
+  height?: number;
+};
+
 const IMAGE_EXTENSIONS = new Set([
   ".jpg",
   ".jpeg",
@@ -32,20 +38,40 @@ const shuffle = <T,>(items: T[]) => {
   return array;
 };
 
+const readManifest = () => {
+  const manifestPath = path.join(process.cwd(), "public", "images.json");
+  if (!fs.existsSync(manifestPath)) {
+    return new Map<string, ImageManifestEntry>();
+  }
+
+  try {
+    const data = JSON.parse(
+      fs.readFileSync(manifestPath, "utf8"),
+    ) as ImageManifestEntry[];
+    return new Map(data.map((entry) => [entry.file, entry]));
+  } catch {
+    return new Map<string, ImageManifestEntry>();
+  }
+};
+
 const getImages = () => {
   const directory = path.join(process.cwd(), "public", "pictures");
   if (!fs.existsSync(directory)) {
     return [];
   }
 
+  const manifest = readManifest();
   const files = fs.readdirSync(directory);
   const images = files
     .filter((file) => IMAGE_EXTENSIONS.has(path.extname(file).toLowerCase()))
     .map((file) => {
       const alt = toAltText(file) || "Photograph";
+      const meta = manifest.get(file);
       return {
         src: encodeURI(`/pictures/${file}`),
         alt,
+        width: meta?.width,
+        height: meta?.height,
       };
     });
 

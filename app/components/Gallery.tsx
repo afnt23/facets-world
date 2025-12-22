@@ -12,11 +12,15 @@ import { createPortal } from "react-dom";
 type GalleryImage = {
   src: string;
   alt: string;
+  width?: number;
+  height?: number;
 };
 
 type GalleryProps = {
   images: GalleryImage[];
 };
+
+const INTRO_FALLBACK_MS = 1000;
 
 export default function Gallery({ images }: GalleryProps) {
   const [introActive, setIntroActive] = useState(true);
@@ -89,6 +93,14 @@ export default function Gallery({ images }: GalleryProps) {
     video.preload = "auto";
     video.load();
 
+    let fallbackTimeout: number | null = null;
+
+    const clearFallback = () => {
+      if (fallbackTimeout === null) return;
+      window.clearTimeout(fallbackTimeout);
+      fallbackTimeout = null;
+    };
+
     const tryPlay = () => {
       const attempt = video.play();
       if (attempt && typeof attempt.catch === "function") {
@@ -102,14 +114,34 @@ export default function Gallery({ images }: GalleryProps) {
       tryPlay();
     };
 
+    const onPlaying = () => {
+      clearFallback();
+    };
+
+    const onError = () => {
+      clearFallback();
+      handleIntroEnd();
+    };
+
     video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("playing", onPlaying);
+    video.addEventListener("error", onError);
+
+    fallbackTimeout = window.setTimeout(() => {
+      if (video.paused || video.currentTime === 0) {
+        handleIntroEnd();
+      }
+    }, INTRO_FALLBACK_MS);
 
     requestAnimationFrame(() => {
       requestAnimationFrame(tryPlay);
     });
 
     return () => {
+      clearFallback();
       video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("playing", onPlaying);
+      video.removeEventListener("error", onError);
     };
   }, [introActive, mounted, handleIntroEnd]);
 
@@ -193,6 +225,8 @@ export default function Gallery({ images }: GalleryProps) {
             <img
               src={image.src}
               alt={image.alt}
+              width={image.width}
+              height={image.height}
               loading={index < 6 ? "eager" : "lazy"}
               fetchPriority={index < 2 ? "high" : "auto"}
               decoding="async"
@@ -214,6 +248,7 @@ export default function Gallery({ images }: GalleryProps) {
                 <video
                   className="intro-video"
                   src={encodeURI("/Introvideo.mp4")}
+                  poster="/Introvideo-poster.jpg"
                   autoPlay
                   muted
                   playsInline
