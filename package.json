@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/generate-image-manifest.mjs",
+    "optimize-images": "node scripts/resize-images.mjs",
+    "predev": "node scripts/resize-images.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/generate-image-manifest.mjs",
+    "prebuild": "node scripts/resize-images.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

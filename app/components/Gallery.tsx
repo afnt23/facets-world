@@ -5,30 +5,15 @@ import { useCallback, useEffect, useState } from "react";
 type GalleryImage = {
   src: string;
   alt: string;
-  width?: number;
-  height?: number;
 };
 
-const shuffle = <T,>(items: T[]) => {
-  const array = [...items];
-  for (let i = array.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
+type GalleryProps = {
+  images: GalleryImage[];
 };
 
-const toAltText = (filename: string) =>
-  filename
-    .replace(/\.[^/.]+$/, "")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-export default function Gallery() {
+export default function Gallery({ images }: GalleryProps) {
   const [introActive, setIntroActive] = useState(true);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [images, setImages] = useState<GalleryImage[]>([]);
   const total = images.length;
 
   const close = useCallback(() => {
@@ -76,43 +61,6 @@ export default function Gallery() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadImages = async () => {
-      try {
-        const response = await fetch("/images.json");
-        if (!response.ok) {
-          throw new Error("Failed to load image manifest.");
-        }
-        const files = (await response.json()) as Array<{
-          file: string;
-          width: number | null;
-          height: number | null;
-        }>;
-        const mapped = files.map((entry) => ({
-          src: encodeURI(`/pictures/${entry.file}`),
-          alt: toAltText(entry.file) || "Photograph",
-          width: entry.width ?? undefined,
-          height: entry.height ?? undefined,
-        }));
-        if (isMounted) {
-          setImages(shuffle(mapped));
-        }
-      } catch {
-        if (isMounted) {
-          setImages([]);
-        }
-      }
-    };
-
-    loadImages();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
   const activeImage = activeIndex !== null ? images[activeIndex] : null;
 
   return (
@@ -129,10 +77,8 @@ export default function Gallery() {
             <img
               src={image.src}
               alt={image.alt}
-              width={image.width}
-              height={image.height}
-              loading={index < 2 ? "eager" : "lazy"}
-              fetchPriority={index === 0 ? "high" : "auto"}
+              loading={index < 6 ? "eager" : "lazy"}
+              fetchPriority={index < 2 ? "high" : "auto"}
               decoding="async"
               className="gallery-image"
             />
