@@ -237,7 +237,7 @@ export default function Gallery({ images }: GalleryProps) {
               <div className="lightbox-inner">
                 <video
                   className={`intro-video${introPlaying ? " is-playing" : ""}`}
-                  src={encodeURI("/My Movie 3.mp4")}
+                  src={encodeURI("/Introvideo.mp4")}
                   autoPlay
                   muted
                   playsInline
