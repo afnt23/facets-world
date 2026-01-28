@@ -126,13 +126,14 @@ a:focus-visible {
 }
 
 .masonry {
-  column-count: 1;
-  column-gap: clamp(12px, 1.5vw, 24px);
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: clamp(12px, 1.5vw, 24px);
+  align-items: start;
 }
 
 .masonry-item {
-  break-inside: avoid;
-  margin-bottom: clamp(12px, 1.5vw, 24px);
+  margin-bottom: 0;
   width: 100%;
 }
 
@@ -141,10 +142,13 @@ a:focus-visible {
   padding: 0;
   margin: 0;
   background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
   cursor: pointer;
   display: block;
   width: 100%;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .gallery-image {
@@ -226,19 +230,19 @@ a:focus-visible {
 
 @media (min-width: 700px) {
   .masonry {
-    column-count: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1024px) {
   .masonry {
-    column-count: 3;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1400px) {
   .masonry {
-    column-count: 4;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
