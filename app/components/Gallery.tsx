@@ -20,13 +20,12 @@ type GalleryProps = {
   images: GalleryImage[];
 };
 
-const INTRO_FALLBACK_MS = 1000;
+const EAGER_IMAGE_COUNT = 8;
+const HIGH_PRIORITY_COUNT = 4;
 
 export default function Gallery({ images }: GalleryProps) {
-  const [introActive, setIntroActive] = useState(true);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
-  const introVideoRef = useRef<HTMLVideoElement | null>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeLock = useRef(false);
   const total = images.length;
@@ -68,85 +67,12 @@ export default function Gallery({ images }: GalleryProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeIndex, close, showNext, showPrev]);
 
-  const handleIntroEnd = useCallback(() => {
-    setIntroActive(false);
-  }, []);
-
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!introActive || !mounted) return;
-    const video = introVideoRef.current;
-    if (!video) return;
-
-    video.muted = true;
-    video.defaultMuted = true;
-    video.playsInline = true;
-    video.setAttribute("playsinline", "");
-    video.setAttribute("webkit-playsinline", "");
-    video.setAttribute("muted", "");
-    video.setAttribute("autoplay", "");
-    video.controls = false;
-    video.disablePictureInPicture = true;
-    video.preload = "auto";
-    video.load();
-
-    let fallbackTimeout: number | null = null;
-
-    const clearFallback = () => {
-      if (fallbackTimeout === null) return;
-      window.clearTimeout(fallbackTimeout);
-      fallbackTimeout = null;
-    };
-
-    const tryPlay = () => {
-      const attempt = video.play();
-      if (attempt && typeof attempt.catch === "function") {
-        attempt.catch(() => {
-          handleIntroEnd();
-        });
-      }
-    };
-
-    const onCanPlay = () => {
-      tryPlay();
-    };
-
-    const onPlaying = () => {
-      clearFallback();
-    };
-
-    const onError = () => {
-      clearFallback();
-      handleIntroEnd();
-    };
-
-    video.addEventListener("canplay", onCanPlay);
-    video.addEventListener("playing", onPlaying);
-    video.addEventListener("error", onError);
-
-    fallbackTimeout = window.setTimeout(() => {
-      if (video.paused || video.currentTime === 0) {
-        handleIntroEnd();
-      }
-    }, INTRO_FALLBACK_MS);
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(tryPlay);
-    });
-
-    return () => {
-      clearFallback();
-      video.removeEventListener("canplay", onCanPlay);
-      video.removeEventListener("playing", onPlaying);
-      video.removeEventListener("error", onError);
-    };
-  }, [introActive, mounted, handleIntroEnd]);
-
-  useEffect(() => {
-    if (!introActive && activeIndex === null) return;
+    if (activeIndex === null) return;
 
     const { body } = document;
     const scrollY = window.scrollY;
@@ -172,7 +98,7 @@ export default function Gallery({ images }: GalleryProps) {
       body.style.width = previous.width;
       window.scrollTo(0, scrollY);
     };
-  }, [introActive, activeIndex]);
+  }, [activeIndex]);
 
   const activeImage = activeIndex !== null ? images[activeIndex] : null;
 
@@ -214,57 +140,32 @@ export default function Gallery({ images }: GalleryProps) {
   return (
     <div className="gallery">
       <div className="masonry">
-        {images.map((image, index) => (
-          <button
-            key={image.src}
-            type="button"
-            className="masonry-item image-tile"
-            onClick={() => setActiveIndex(index)}
-            aria-label={`Open image ${index + 1}`}
-          >
-            <img
-              src={image.src}
-              alt={image.alt}
-              width={image.width}
-              height={image.height}
-              loading={index < 6 ? "eager" : "lazy"}
-              fetchPriority={index < 2 ? "high" : "auto"}
-              decoding="async"
-              className="gallery-image"
-            />
-          </button>
-        ))}
-      </div>
+        {images.map((image, index) => {
+          const eager = index < EAGER_IMAGE_COUNT;
+          const highPriority = index < HIGH_PRIORITY_COUNT;
 
-      {mounted && introActive
-        ? createPortal(
-            <div
-              className="lightbox intro-splash"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Intro video"
+          return (
+            <button
+              key={image.src}
+              type="button"
+              className="masonry-item image-tile"
+              onClick={() => setActiveIndex(index)}
+              aria-label={`Open image ${index + 1}`}
             >
-              <div className="lightbox-inner">
-                <video
-                  className="intro-video"
-                  src={encodeURI("/Introvideo.mp4")}
-                  poster="/Introvideo-poster.jpg"
-                  autoPlay
-                  muted
-                  playsInline
-                  preload="auto"
-                  controls={false}
-                  disablePictureInPicture
-                  controlsList="nodownload noplaybackrate noremoteplayback"
-                  ref={introVideoRef}
-                  onEnded={handleIntroEnd}
-                  onError={handleIntroEnd}
-                />
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+              <img
+                src={image.src}
+                alt={image.alt}
+                width={image.width}
+                height={image.height}
+                loading={eager ? "eager" : "lazy"}
+                fetchPriority={highPriority ? "high" : "auto"}
+                decoding="async"
+                className="gallery-image"
+              />
+            </button>
+          );
+        })}
+      </div>
 
       {mounted && activeImage
         ? createPortal(
@@ -284,6 +185,7 @@ export default function Gallery({ images }: GalleryProps) {
                 <img
                   src={activeImage.src}
                   alt={activeImage.alt}
+                  decoding="async"
                   className="lightbox-image"
                 />
               </div>
