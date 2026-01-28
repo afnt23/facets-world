@@ -126,14 +126,14 @@ a:focus-visible {
 }
 
 .masonry {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: clamp(12px, 1.5vw, 24px);
-  align-items: start;
+  column-count: 1;
+  column-gap: clamp(12px, 1.5vw, 24px);
+  column-fill: auto;
 }
 
 .masonry-item {
-  margin-bottom: 0;
+  break-inside: avoid;
+  margin-bottom: clamp(12px, 1.5vw, 24px);
   width: 100%;
 }
 
@@ -230,19 +230,19 @@ a:focus-visible {
 
 @media (min-width: 700px) {
   .masonry {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-count: 2;
   }
 }
 
 @media (min-width: 1024px) {
   .masonry {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-count: 3;
   }
 }
 
 @media (min-width: 1400px) {
   .masonry {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-count: 4;
   }
 }
 
