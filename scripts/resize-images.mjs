@@ -100,3 +100,24 @@ for (const file of fs.readdirSync(IMAGE_DIR)) {
 
 writeCache(nextCache);
 console.log(`Image resize complete. Updated ${processed} file(s).`);
+
+// Regenerate images.json manifest with current dimensions
+const manifestPath = path.join(ROOT, "public", "images.json");
+const manifest = [];
+for (const file of fs.readdirSync(IMAGE_DIR)) {
+  const ext = path.extname(file).toLowerCase();
+  if (!IMAGE_EXTENSIONS.has(ext)) continue;
+  const filePath = path.join(IMAGE_DIR, file);
+  if (!fs.statSync(filePath).isFile()) continue;
+  try {
+    const out = execFileSync(SIPS_PATH, ["-g", "pixelWidth", "-g", "pixelHeight", filePath], { encoding: "utf8" });
+    const width = Number(out.match(/pixelWidth: (\d+)/)?.[1]);
+    const height = Number(out.match(/pixelHeight: (\d+)/)?.[1]);
+    if (width && height) manifest.push({ file, width, height });
+  } catch {
+    manifest.push({ file });
+  }
+}
+manifest.sort((a, b) => a.file.localeCompare(b.file));
+fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+console.log(`images.json updated: ${manifest.length} entries.`);

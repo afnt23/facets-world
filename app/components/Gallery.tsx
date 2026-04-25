@@ -161,6 +161,10 @@ export default function Gallery({ images }: GalleryProps) {
                 fetchPriority={highPriority ? "high" : "auto"}
                 decoding="async"
                 className="gallery-image"
+                ref={(el) => {
+                  if (el?.complete) el.classList.add("is-loaded");
+                }}
+                onLoad={(e) => e.currentTarget.classList.add("is-loaded")}
               />
             </button>
           );
@@ -178,11 +182,42 @@ export default function Gallery({ images }: GalleryProps) {
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
+              <button
+                type="button"
+                className="lightbox-close"
+                onClick={(e) => { e.stopPropagation(); close(); }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+
+              {total > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="lightbox-nav lightbox-prev"
+                    onClick={(e) => { e.stopPropagation(); showPrev(); }}
+                    aria-label="Previous image"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="lightbox-nav lightbox-next"
+                    onClick={(e) => { e.stopPropagation(); showNext(); }}
+                    aria-label="Next image"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+
               <div
                 className="lightbox-inner"
                 onClick={(event) => event.stopPropagation()}
               >
                 <img
+                  key={activeImage.src}
                   src={activeImage.src}
                   alt={activeImage.alt}
                   decoding="async"
