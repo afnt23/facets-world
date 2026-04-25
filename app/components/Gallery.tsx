@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   useCallback,
   useEffect,
@@ -152,15 +153,16 @@ export default function Gallery({ images }: GalleryProps) {
               onClick={() => setActiveIndex(index)}
               aria-label={`Open image ${index + 1}`}
             >
-              <img
+              <Image
                 src={image.src}
                 alt={image.alt}
-                width={image.width}
-                height={image.height}
-                loading={eager ? "eager" : "lazy"}
-                fetchPriority={highPriority ? "high" : "auto"}
-                decoding="async"
+                width={image.width ?? 2000}
+                height={image.height ?? 1333}
+                sizes="(max-width: 700px) 94vw, (max-width: 1024px) 47vw, (max-width: 1400px) 31vw, 24vw"
+                priority={highPriority}
+                loading={highPriority ? undefined : eager ? "eager" : "lazy"}
                 className="gallery-image"
+                style={{ width: "100%", height: "auto", display: "block" }}
                 ref={(el) => {
                   if (el?.complete) el.classList.add("is-loaded");
                 }}
@@ -216,12 +218,15 @@ export default function Gallery({ images }: GalleryProps) {
                 className="lightbox-inner"
                 onClick={(event) => event.stopPropagation()}
               >
-                <img
+                <Image
                   key={activeImage.src}
                   src={activeImage.src}
                   alt={activeImage.alt}
-                  decoding="async"
+                  width={activeImage.width ?? 2000}
+                  height={activeImage.height ?? 1333}
+                  priority
                   className="lightbox-image"
+                  style={{ width: "auto", height: "auto" }}
                 />
               </div>
             </div>,
