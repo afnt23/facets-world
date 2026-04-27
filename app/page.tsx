@@ -93,6 +93,7 @@ export default function Home() {
         <Gallery images={images} />
       </main>
 
+
     </div>
   );
 }

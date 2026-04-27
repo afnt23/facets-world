@@ -1,8 +1,3 @@
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-
 type SiteHeaderProps = {
   eyebrow: string;
   title: string;
@@ -10,106 +5,40 @@ type SiteHeaderProps = {
 };
 
 export default function SiteHeader({ eyebrow, title, navLinks }: SiteHeaderProps) {
-  const [logoOpen, setLogoOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  const closeLogo = useCallback(() => {
-    setLogoOpen(false);
-  }, []);
-
-  useEffect(() => {
-    if (!logoOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        closeLogo();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [logoOpen, closeLogo]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!logoOpen) return;
-
-    const { body } = document;
-    const scrollY = window.scrollY;
-    const previous = {
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      right: body.style.right,
-      width: body.style.width,
-    };
-
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.left = "0";
-    body.style.right = "0";
-    body.style.width = "100%";
-
-    return () => {
-      body.style.position = previous.position;
-      body.style.top = previous.top;
-      body.style.left = previous.left;
-      body.style.right = previous.right;
-      body.style.width = previous.width;
-      window.scrollTo(0, scrollY);
-    };
-  }, [logoOpen]);
-
   return (
-    <header className="site-header">
-      <div className="brand">
-        <button
-          type="button"
-          className="logo-button"
-          onClick={() => setLogoOpen(true)}
-          aria-label="Open logo"
-        >
-          <img
-            src="/logo.png"
-            alt="Facets Of The World logo"
-            className="brand-logo"
-          />
-        </button>
-        <p className="brand-eyebrow">{eyebrow}</p>
-        <h1 className="brand-title">{title}</h1>
-      </div>
-      <nav className="site-nav" aria-label="Primary">
-        {navLinks.map((link) => (
-          <a key={link.href} href={link.href}>
-            {link.label}
-          </a>
-        ))}
-      </nav>
+    <header className="intro">
+      <div className="intro-inner">
 
-      {mounted && logoOpen
-        ? createPortal(
-            <div
-              className="lightbox"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Logo view"
-              onClick={closeLogo}
-            >
-              <div
-                className="lightbox-inner"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <img
-                  src="/logo.png"
-                  alt="Facets Of The World logo"
-                  className="logo-popup-image"
-                />
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+        {/* top bar */}
+        <div className="intro-bar">
+          <span>{eyebrow}</span>
+          {navLinks.map((link) => (
+            <a key={link.href} href={link.href} className="intro-bar-link">
+              {link.label}
+              <span className="intro-bar-arrow">↓</span>
+            </a>
+          ))}
+        </div>
+
+        {/* center content */}
+        <div className="intro-center">
+          <h1 className="intro-title">
+            <span className="intro-title-word">Facets</span>
+            <em className="intro-title-of">of the</em>
+            <span className="intro-title-word">World</span>
+          </h1>
+        </div>
+
+        {/* bottom bar */}
+        <div className="intro-foot">
+          <span>Photography</span>
+          <a href={navLinks[0]?.href ?? "#"} className="intro-scroll" aria-label="Scroll to gallery">
+            <span>Scroll</span>
+            <div className="intro-scroll-line" />
+          </a>
+        </div>
+
+      </div>
     </header>
   );
 }

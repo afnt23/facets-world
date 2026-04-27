@@ -4,6 +4,7 @@ import Image from "next/image";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type TouchEvent,
@@ -21,156 +22,173 @@ type GalleryProps = {
   images: GalleryImage[];
 };
 
-const EAGER_IMAGE_COUNT = 8;
-const HIGH_PRIORITY_COUNT = 4;
+const EAGER_COUNT = 8;
+const PRIORITY_COUNT = 4;
 
 export default function Gallery({ images }: GalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [colCount, setColCount] = useState(3);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeLock = useRef(false);
+  const masonryRef = useRef<HTMLDivElement>(null);
   const total = images.length;
 
-  const close = useCallback(() => {
-    setActiveIndex(null);
+  // ── scroll to top on load ────────────────────────────
+  useEffect(() => {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
   }, []);
 
+  // ── responsive column count ──────────────────────────
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      setColCount(w >= 1400 ? 4 : w >= 900 ? 3 : w >= 480 ? 2 : 1);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // ── scroll reveal ────────────────────────────────────
+  useEffect(() => {
+    const container = masonryRef.current;
+    if (!container) return;
+
+    let n = 0;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const el = entry.target as HTMLElement;
+          el.style.transitionDelay = `${(n % 6) * 65}ms`;
+          n++;
+          el.classList.add("is-visible");
+          observer.unobserve(el);
+        }
+      },
+      { threshold: 0.05, rootMargin: "0px 0px -24px 0px" },
+    );
+
+    container.querySelectorAll(".masonry-item").forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [images, colCount]);
+
+  // ── lightbox controls ────────────────────────────────
+  const close = useCallback(() => setActiveIndex(null), []);
+
   const showNext = useCallback(() => {
-    setActiveIndex((current) => {
-      if (current === null) return null;
-      return (current + 1) % total;
-    });
+    setActiveIndex((i) => (i === null ? null : (i + 1) % total));
   }, [total]);
 
   const showPrev = useCallback(() => {
-    setActiveIndex((current) => {
-      if (current === null) return null;
-      return (current - 1 + total) % total;
-    });
+    setActiveIndex((i) => (i === null ? null : (i - 1 + total) % total));
   }, [total]);
 
   useEffect(() => {
     if (activeIndex === null) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        close();
-      }
-      if (event.key === "ArrowRight") {
-        showNext();
-      }
-      if (event.key === "ArrowLeft") {
-        showPrev();
-      }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowRight") showNext();
+      if (e.key === "ArrowLeft") showPrev();
     };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [activeIndex, close, showNext, showPrev]);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
+  // ── scroll lock ──────────────────────────────────────
   useEffect(() => {
     if (activeIndex === null) return;
-
     const { body } = document;
     const scrollY = window.scrollY;
-    const previous = {
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      right: body.style.right,
-      width: body.style.width,
+    const prev = {
+      position: body.style.position, top: body.style.top,
+      left: body.style.left, right: body.style.right, width: body.style.width,
     };
-
     body.style.position = "fixed";
     body.style.top = `-${scrollY}px`;
     body.style.left = "0";
     body.style.right = "0";
     body.style.width = "100%";
-
     return () => {
-      body.style.position = previous.position;
-      body.style.top = previous.top;
-      body.style.left = previous.left;
-      body.style.right = previous.right;
-      body.style.width = previous.width;
+      Object.assign(body.style, prev);
       window.scrollTo(0, scrollY);
     };
   }, [activeIndex]);
 
-  const activeImage = activeIndex !== null ? images[activeIndex] : null;
-
-  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
-    const touch = event.touches[0];
-    touchStart.current = { x: touch.clientX, y: touch.clientY };
+  // ── touch ────────────────────────────────────────────
+  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    const t = e.touches[0];
+    touchStart.current = { x: t.clientX, y: t.clientY };
   };
 
-  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+  const handleTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
     if (!touchStart.current) return;
-    const touch = event.changedTouches[0];
-    const deltaX = touch.clientX - touchStart.current.x;
-    const deltaY = touch.clientY - touchStart.current.y;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.current.x;
+    const dy = t.clientY - touchStart.current.y;
     touchStart.current = null;
-
-    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) < Math.abs(deltaY)) {
-      return;
-    }
-
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
     swipeLock.current = true;
-    if (deltaX < 0) {
-      showNext();
-    } else {
-      showPrev();
-    }
-
-    window.setTimeout(() => {
-      swipeLock.current = false;
-    }, 250);
+    dx < 0 ? showNext() : showPrev();
+    setTimeout(() => { swipeLock.current = false; }, 250);
   };
 
-  const handleOverlayClick = () => {
-    if (swipeLock.current) {
-      return;
-    }
-    close();
-  };
+  const columns = useMemo(() =>
+    Array.from({ length: colCount }, (_, ci) =>
+      images.map((image, i) => ({ image, i })).filter((_, idx) => idx % colCount === ci)
+    ),
+  [images, colCount]);
+
+  const activeImage = activeIndex !== null ? images[activeIndex] : null;
+  const counter = activeIndex !== null
+    ? `${String(activeIndex + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`
+    : "";
 
   return (
     <div className="gallery">
-      <div className="masonry">
-        {images.map((image, index) => {
-          const eager = index < EAGER_IMAGE_COUNT;
-          const highPriority = index < HIGH_PRIORITY_COUNT;
+      <div className="gallery-lead">
+        <span>Selected Works</span>
+        <span>{total}</span>
+      </div>
 
-          return (
-            <button
-              key={image.src}
-              type="button"
-              className="masonry-item image-tile"
-              onClick={() => setActiveIndex(index)}
-              aria-label={`Open image ${index + 1}`}
-            >
-              <Image
-                src={image.src}
-                alt={image.alt}
-                width={image.width ?? 2000}
-                height={image.height ?? 1333}
-                sizes="(max-width: 700px) 94vw, (max-width: 1024px) 47vw, (max-width: 1400px) 31vw, 24vw"
-                priority={highPriority}
-                loading={highPriority ? undefined : eager ? "eager" : "lazy"}
-                className="gallery-image"
-                style={{ width: "100%", height: "auto", display: "block" }}
-                ref={(el) => {
-                  if (el?.complete) el.classList.add("is-loaded");
-                }}
-                onLoad={(e) => e.currentTarget.classList.add("is-loaded")}
-              />
-            </button>
-          );
-        })}
+      <div className="masonry" ref={masonryRef}>
+        {columns.map((col, ci) => (
+          <div key={ci} className="masonry-col">
+            {col.map(({ image, i }) => {
+              const eager = i < EAGER_COUNT;
+              const priority = i < PRIORITY_COUNT;
+              return (
+                <div key={image.src} className="masonry-item">
+                  <button
+                    type="button"
+                    className="image-tile"
+                    onClick={() => setActiveIndex(i)}
+                    aria-label={`Open photo ${i + 1}`}
+                  >
+                    <Image
+                      src={image.src}
+                      alt={image.alt}
+                      width={image.width ?? 2000}
+                      height={image.height ?? 1333}
+                      sizes="(max-width: 479px) 100vw, (max-width: 899px) 50vw, (max-width: 1399px) 34vw, 25vw"
+                      priority={priority}
+                      loading={priority ? undefined : eager ? "eager" : "lazy"}
+                      className="gallery-image"
+                      style={{ width: "100%", height: "auto", display: "block" }}
+                      ref={(el) => { if (el?.complete) el.classList.add("is-loaded"); }}
+                      onLoad={(e) => e.currentTarget.classList.add("is-loaded")}
+                      unoptimized
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
 
       {mounted && activeImage
@@ -179,44 +197,27 @@ export default function Gallery({ images }: GalleryProps) {
               className="lightbox"
               role="dialog"
               aria-modal="true"
-              aria-label="Expanded image view"
-              onClick={handleOverlayClick}
+              aria-label="Photo viewer"
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
-              <button
-                type="button"
-                className="lightbox-close"
-                onClick={(e) => { e.stopPropagation(); close(); }}
-                aria-label="Close"
-              >
-                ×
-              </button>
+              {/* top bar */}
+              <div className="lightbox-topbar">
+                <span className="lightbox-counter">{counter}</span>
+                <button
+                  type="button"
+                  className="lightbox-close"
+                  onClick={close}
+                  aria-label="Close"
+                >
+                  Close
+                </button>
+              </div>
 
-              {total > 1 && (
-                <>
-                  <button
-                    type="button"
-                    className="lightbox-nav lightbox-prev"
-                    onClick={(e) => { e.stopPropagation(); showPrev(); }}
-                    aria-label="Previous image"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    className="lightbox-nav lightbox-next"
-                    onClick={(e) => { e.stopPropagation(); showNext(); }}
-                    aria-label="Next image"
-                  >
-                    ›
-                  </button>
-                </>
-              )}
-
+              {/* image */}
               <div
-                className="lightbox-inner"
-                onClick={(event) => event.stopPropagation()}
+                className="lightbox-stage"
+                onClick={(e) => { if (e.target === e.currentTarget && !swipeLock.current) close(); }}
               >
                 <Image
                   key={activeImage.src}
@@ -227,8 +228,36 @@ export default function Gallery({ images }: GalleryProps) {
                   priority
                   className="lightbox-image"
                   style={{ width: "auto", height: "auto" }}
+                  unoptimized
                 />
               </div>
+
+              {/* bottom hint */}
+              <div className="lightbox-hint">
+                ← → navigate &nbsp;&nbsp;·&nbsp;&nbsp; esc close
+              </div>
+
+              {/* arrows */}
+              {total > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="lightbox-prev"
+                    onClick={showPrev}
+                    aria-label="Previous"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="lightbox-next"
+                    onClick={showNext}
+                    aria-label="Next"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
             </div>,
             document.body,
           )
