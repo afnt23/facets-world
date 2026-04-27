@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 type GalleryImage = {
   src: string;
   alt: string;
+  country?: string;
   width?: number;
   height?: number;
 };
@@ -30,10 +31,10 @@ export default function Gallery({ images }: GalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const [colCount, setColCount] = useState(2);
+  const [activeCountry, setActiveCountry] = useState<string | null>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeLock = useRef(false);
   const masonryRef = useRef<HTMLDivElement>(null);
-  const total = images.length;
 
   // ── scroll to top on load ────────────────────────────
   useEffect(() => {
@@ -52,26 +53,32 @@ export default function Gallery({ images }: GalleryProps) {
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  // ── country list + filtered images ───────────────────
+  const countries = useMemo(
+    () => [...new Set(images.map((img) => img.country).filter(Boolean) as string[])].sort(),
+    [images],
+  );
+
+  const filtered = useMemo(
+    () => (activeCountry ? images.filter((img) => img.country === activeCountry) : images),
+    [images, activeCountry],
+  );
+
+  const total = filtered.length;
+
   // ── greedy column distribution ────────────────────────
   const columns = useMemo(() => {
-    // Approximate column width for converting the 10px CSS gap into ratio units.
-    // This lets the algorithm know that adding an extra image also adds gap height,
-    // so portrait-heavy columns attract fewer landscape images to compensate.
     const approxColW = colCount === 2 ? 175 : colCount === 3 ? 360 : 310;
     const gapRatio = 10 / approxColW;
 
     const cols: Array<Array<{ image: GalleryImage; i: number }>> =
       Array.from({ length: colCount }, () => []);
-    const heights = new Array(colCount).fill(0); // tracks actual pixel-equivalent height
+    const heights = new Array(colCount).fill(0);
     const counts  = new Array(colCount).fill(0);
-    // Cap: no column gets more than ⌈N/K⌉ images, bounding count imbalance to ±1.
-    const cap = Math.ceil(images.length / colCount);
+    const cap = Math.ceil(filtered.length / colCount);
 
-    images.forEach((image, i) => {
+    filtered.forEach((image, i) => {
       const ratio = (image.height ?? 1333) / (image.width ?? 2000);
-
-      // Cost of adding this image to column c = current height + gap (if non-empty).
-      // Pick the eligible column with the lowest projected height.
       let best = -1;
       let bestH = Infinity;
       for (let c = 0; c < colCount; c++) {
@@ -79,20 +86,18 @@ export default function Gallery({ images }: GalleryProps) {
         const h = heights[c] + (counts[c] > 0 ? gapRatio : 0);
         if (h < bestH) { best = c; bestH = h; }
       }
-      // Fallback (all at cap): pick globally shortest.
       if (best === -1) {
         best = 0; bestH = heights[0];
         for (let c = 1; c < colCount; c++) {
           if (heights[c] < bestH) { best = c; bestH = heights[c]; }
         }
       }
-
       heights[best] = bestH + ratio;
       counts[best]++;
       cols[best].push({ image, i });
     });
     return cols;
-  }, [images, colCount]);
+  }, [filtered, colCount]);
 
   // ── scroll reveal ────────────────────────────────────
   useEffect(() => {
@@ -171,18 +176,42 @@ export default function Gallery({ images }: GalleryProps) {
     setTimeout(() => { swipeLock.current = false; }, 250);
   };
 
-  const activeImage = activeIndex !== null ? images[activeIndex] : null;
+  const activeImage = activeIndex !== null ? filtered[activeIndex] : null;
   const counter = activeIndex !== null
     ? `${String(activeIndex + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`
     : "";
 
   return (
     <div className="gallery">
+      {/* ── lead + country filter ── */}
       <div className="gallery-lead">
-        <span>Selected Works</span>
+        <span>{activeCountry ?? "Selected Works"}</span>
         <span>{total}</span>
       </div>
 
+      {countries.length > 0 && (
+        <div className="gallery-filters">
+          <button
+            type="button"
+            className={`gallery-filter-btn${!activeCountry ? " is-active" : ""}`}
+            onClick={() => { setActiveCountry(null); setActiveIndex(null); }}
+          >
+            All
+          </button>
+          {countries.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={`gallery-filter-btn${activeCountry === c ? " is-active" : ""}`}
+              onClick={() => { setActiveCountry(c); setActiveIndex(null); }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── masonry grid ── */}
       <div className="masonry" ref={masonryRef}>
         {columns.map((col, ci) => (
           <div key={ci} className="masonry-col">
@@ -219,6 +248,7 @@ export default function Gallery({ images }: GalleryProps) {
         ))}
       </div>
 
+      {/* ── lightbox ── */}
       {mounted && activeImage ? createPortal(
         <div
           className="lightbox"
@@ -244,6 +274,9 @@ export default function Gallery({ images }: GalleryProps) {
               style={{ width: "auto", height: "auto" }}
               unoptimized
             />
+            {activeImage.country && (
+              <span className="lightbox-country">{activeImage.country}</span>
+            )}
           </div>
           <div className="lightbox-hint">← → navigate &nbsp;&nbsp;·&nbsp;&nbsp; esc close</div>
           {total > 1 && (

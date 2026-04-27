@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 
 type ImageManifestEntry = {
   file: string;
+  country?: string;
   width?: number;
   height?: number;
 };
@@ -43,37 +44,40 @@ const readManifest = () => {
   if (!fs.existsSync(manifestPath)) {
     return new Map<string, ImageManifestEntry>();
   }
-
   try {
     const data = JSON.parse(
       fs.readFileSync(manifestPath, "utf8"),
     ) as ImageManifestEntry[];
-    return new Map(data.map((entry) => [entry.file, entry]));
+    // Key by "Country/filename" so same filename in different countries is distinct
+    return new Map(data.map((entry) => [`${entry.country ?? ""}/${entry.file}`, entry]));
   } catch {
     return new Map<string, ImageManifestEntry>();
   }
 };
 
 const getImages = () => {
-  const directory = path.join(process.cwd(), "public", "pictures");
-  if (!fs.existsSync(directory)) {
-    return [];
-  }
+  const picsDir = path.join(process.cwd(), "public", "pictures");
+  if (!fs.existsSync(picsDir)) return [];
 
   const manifest = readManifest();
-  const files = fs.readdirSync(directory);
-  const images = files
-    .filter((file) => IMAGE_EXTENSIONS.has(path.extname(file).toLowerCase()))
-    .map((file) => {
-      const alt = toAltText(file) || "Photograph";
-      const meta = manifest.get(file);
-      return {
-        src: encodeURI(`/pictures/${file}`),
-        alt,
+  const images: Array<{ src: string; alt: string; country: string; width?: number; height?: number }> = [];
+
+  for (const country of fs.readdirSync(picsDir).sort()) {
+    const countryDir = path.join(picsDir, country);
+    if (!fs.statSync(countryDir).isDirectory()) continue;
+
+    for (const file of fs.readdirSync(countryDir).sort()) {
+      if (!IMAGE_EXTENSIONS.has(path.extname(file).toLowerCase())) continue;
+      const meta = manifest.get(`${country}/${file}`);
+      images.push({
+        src: encodeURI(`/pictures/${country}/${file}`),
+        alt: toAltText(file) || "Photograph",
+        country,
         width: meta?.width,
         height: meta?.height,
-      };
-    });
+      });
+    }
+  }
 
   return shuffle(images);
 };
