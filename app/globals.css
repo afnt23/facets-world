@@ -425,9 +425,6 @@ a { color: inherit; text-decoration: none; }
 
 /* ─── responsive ──────────────────────────────────────── */
 @media (max-width: 599px) {
-  /* skip heavy background image on mobile */
-  .intro::before { display: none; }
-
   /* tighter bar on small screens */
   .intro-bar {
     font-size: 0.58rem;
