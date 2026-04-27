@@ -4,7 +4,6 @@ import Image from "next/image";
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type TouchEvent,
@@ -28,7 +27,6 @@ const PRIORITY_COUNT = 4;
 export default function Gallery({ images }: GalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [colCount, setColCount] = useState(3);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeLock = useRef(false);
   const masonryRef = useRef<HTMLDivElement>(null);
@@ -38,17 +36,6 @@ export default function Gallery({ images }: GalleryProps) {
   useEffect(() => {
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     window.scrollTo(0, 0);
-  }, []);
-
-  // ── responsive column count ──────────────────────────
-  useEffect(() => {
-    const update = () => {
-      const w = window.innerWidth;
-      setColCount(w >= 1400 ? 4 : w >= 900 ? 3 : 2);
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
   }, []);
 
   // ── scroll reveal ────────────────────────────────────
@@ -73,7 +60,7 @@ export default function Gallery({ images }: GalleryProps) {
 
     container.querySelectorAll(".masonry-item").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [images, colCount]);
+  }, [images]);
 
   // ── lightbox controls ────────────────────────────────
   const close = useCallback(() => setActiveIndex(null), []);
@@ -137,21 +124,6 @@ export default function Gallery({ images }: GalleryProps) {
     setTimeout(() => { swipeLock.current = false; }, 250);
   };
 
-  const columns = useMemo(() => {
-    const cols: Array<Array<{ image: GalleryImage; i: number }>> = Array.from({ length: colCount }, () => []);
-    const heights = new Array(colCount).fill(0);
-    images.forEach((image, i) => {
-      const ratio = (image.height ?? 1333) / (image.width ?? 2000);
-      let shortest = 0;
-      for (let c = 1; c < colCount; c++) {
-        if (heights[c] < heights[shortest]) shortest = c;
-      }
-      cols[shortest].push({ image, i });
-      heights[shortest] += ratio;
-    });
-    return cols;
-  }, [images, colCount]);
-
   const activeImage = activeIndex !== null ? images[activeIndex] : null;
   const counter = activeIndex !== null
     ? `${String(activeIndex + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}`
@@ -165,39 +137,35 @@ export default function Gallery({ images }: GalleryProps) {
       </div>
 
       <div className="masonry" ref={masonryRef}>
-        {columns.map((col, ci) => (
-          <div key={ci} className="masonry-col">
-            {col.map(({ image, i }) => {
-              const eager = i < EAGER_COUNT;
-              const priority = i < PRIORITY_COUNT;
-              return (
-                <div key={image.src} className="masonry-item">
-                  <button
-                    type="button"
-                    className="image-tile"
-                    onClick={() => setActiveIndex(i)}
-                    aria-label={`Open photo ${i + 1}`}
-                  >
-                    <Image
-                      src={image.src}
-                      alt={image.alt}
-                      width={image.width ?? 2000}
-                      height={image.height ?? 1333}
-                      sizes="(max-width: 899px) 50vw, (max-width: 1399px) 34vw, 25vw"
-                      priority={priority}
-                      loading={priority ? undefined : eager ? "eager" : "lazy"}
-                      className="gallery-image"
-                      style={{ width: "100%", height: "auto", display: "block" }}
-                      ref={(el) => { if (el?.complete) el.classList.add("is-loaded"); }}
-                      onLoad={(e) => e.currentTarget.classList.add("is-loaded")}
-                      unoptimized
-                    />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        ))}
+        {images.map((image, i) => {
+          const eager = i < EAGER_COUNT;
+          const priority = i < PRIORITY_COUNT;
+          return (
+            <div key={image.src} className="masonry-item">
+              <button
+                type="button"
+                className="image-tile"
+                onClick={() => setActiveIndex(i)}
+                aria-label={`Open photo ${i + 1}`}
+              >
+                <Image
+                  src={image.src}
+                  alt={image.alt}
+                  width={image.width ?? 2000}
+                  height={image.height ?? 1333}
+                  sizes="(max-width: 899px) 50vw, (max-width: 1399px) 34vw, 25vw"
+                  priority={priority}
+                  loading={priority ? undefined : eager ? "eager" : "lazy"}
+                  className="gallery-image"
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                  ref={(el) => { if (el?.complete) el.classList.add("is-loaded"); }}
+                  onLoad={(e) => e.currentTarget.classList.add("is-loaded")}
+                  unoptimized
+                />
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {mounted && activeImage
@@ -210,20 +178,13 @@ export default function Gallery({ images }: GalleryProps) {
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
-              {/* top bar */}
               <div className="lightbox-topbar">
                 <span className="lightbox-counter">{counter}</span>
-                <button
-                  type="button"
-                  className="lightbox-close"
-                  onClick={close}
-                  aria-label="Close"
-                >
+                <button type="button" className="lightbox-close" onClick={close} aria-label="Close">
                   Close
                 </button>
               </div>
 
-              {/* image */}
               <div
                 className="lightbox-stage"
                 onClick={(e) => { if (e.target === e.currentTarget && !swipeLock.current) close(); }}
@@ -241,30 +202,12 @@ export default function Gallery({ images }: GalleryProps) {
                 />
               </div>
 
-              {/* bottom hint */}
-              <div className="lightbox-hint">
-                ← → navigate &nbsp;&nbsp;·&nbsp;&nbsp; esc close
-              </div>
+              <div className="lightbox-hint">← → navigate &nbsp;&nbsp;·&nbsp;&nbsp; esc close</div>
 
-              {/* arrows */}
               {total > 1 && (
                 <>
-                  <button
-                    type="button"
-                    className="lightbox-prev"
-                    onClick={showPrev}
-                    aria-label="Previous"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    className="lightbox-next"
-                    onClick={showNext}
-                    aria-label="Next"
-                  >
-                    ›
-                  </button>
+                  <button type="button" className="lightbox-prev" onClick={showPrev} aria-label="Previous">‹</button>
+                  <button type="button" className="lightbox-next" onClick={showNext} aria-label="Next">›</button>
                 </>
               )}
             </div>,

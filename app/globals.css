@@ -232,20 +232,17 @@ a { color: inherit; text-decoration: none; }
 
 /* ─── masonry ─────────────────────────────────────────── */
 .masonry {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  column-count: 2;
+  column-gap: 10px;
   padding: 0 var(--page-pad) var(--page-pad);
 }
 
-.masonry-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+@media (min-width: 900px)  { .masonry { column-count: 3; } }
+@media (min-width: 1400px) { .masonry { column-count: 4; } }
 
 .masonry-item {
+  break-inside: avoid;
+  margin-bottom: 10px;
   width: 100%;
   background: #f0f0f0;
   opacity: 0;
