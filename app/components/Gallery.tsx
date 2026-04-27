@@ -4,6 +4,8 @@ import Image from "next/image";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type TouchEvent,
@@ -27,6 +29,7 @@ const PRIORITY_COUNT = 4;
 export default function Gallery({ images }: GalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [colCount, setColCount] = useState(2);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeLock = useRef(false);
   const masonryRef = useRef<HTMLDivElement>(null);
@@ -38,11 +41,38 @@ export default function Gallery({ images }: GalleryProps) {
     window.scrollTo(0, 0);
   }, []);
 
+  // ── responsive column count (before first paint) ─────
+  useLayoutEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      setColCount(w >= 1400 ? 4 : w >= 900 ? 3 : 2);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // ── greedy column distribution ────────────────────────
+  const columns = useMemo(() => {
+    const cols: Array<Array<{ image: GalleryImage; i: number }>> =
+      Array.from({ length: colCount }, () => []);
+    const heights = new Array(colCount).fill(0);
+    images.forEach((image, i) => {
+      const ratio = (image.height ?? 1333) / (image.width ?? 2000);
+      let shortest = 0;
+      for (let c = 1; c < colCount; c++) {
+        if (heights[c] < heights[shortest]) shortest = c;
+      }
+      cols[shortest].push({ image, i });
+      heights[shortest] += ratio;
+    });
+    return cols;
+  }, [images, colCount]);
+
   // ── scroll reveal ────────────────────────────────────
   useEffect(() => {
     const container = masonryRef.current;
     if (!container) return;
-
     let n = 0;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -57,18 +87,15 @@ export default function Gallery({ images }: GalleryProps) {
       },
       { threshold: 0.05, rootMargin: "0px 0px -24px 0px" },
     );
-
     container.querySelectorAll(".masonry-item").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [images]);
+  }, [columns]);
 
   // ── lightbox controls ────────────────────────────────
   const close = useCallback(() => setActiveIndex(null), []);
-
   const showNext = useCallback(() => {
     setActiveIndex((i) => (i === null ? null : (i + 1) % total));
   }, [total]);
-
   const showPrev = useCallback(() => {
     setActiveIndex((i) => (i === null ? null : (i - 1 + total) % total));
   }, [total]);
@@ -97,9 +124,7 @@ export default function Gallery({ images }: GalleryProps) {
     };
     body.style.position = "fixed";
     body.style.top = `-${scrollY}px`;
-    body.style.left = "0";
-    body.style.right = "0";
-    body.style.width = "100%";
+    body.style.left = "0"; body.style.right = "0"; body.style.width = "100%";
     return () => {
       Object.assign(body.style, prev);
       window.scrollTo(0, scrollY);
@@ -108,15 +133,12 @@ export default function Gallery({ images }: GalleryProps) {
 
   // ── touch ────────────────────────────────────────────
   const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
-    const t = e.touches[0];
-    touchStart.current = { x: t.clientX, y: t.clientY };
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
-
   const handleTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
     if (!touchStart.current) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStart.current.x;
-    const dy = t.clientY - touchStart.current.y;
+    const dx = e.changedTouches[0].clientX - touchStart.current.x;
+    const dy = e.changedTouches[0].clientY - touchStart.current.y;
     touchStart.current = null;
     if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
     swipeLock.current = true;
@@ -137,83 +159,77 @@ export default function Gallery({ images }: GalleryProps) {
       </div>
 
       <div className="masonry" ref={masonryRef}>
-        {images.map((image, i) => {
-          const eager = i < EAGER_COUNT;
-          const priority = i < PRIORITY_COUNT;
-          return (
-            <div key={image.src} className="masonry-item">
-              <button
-                type="button"
-                className="image-tile"
-                onClick={() => setActiveIndex(i)}
-                aria-label={`Open photo ${i + 1}`}
-              >
-                <Image
-                  src={image.src}
-                  alt={image.alt}
-                  width={image.width ?? 2000}
-                  height={image.height ?? 1333}
-                  sizes="(max-width: 899px) 50vw, (max-width: 1399px) 34vw, 25vw"
-                  priority={priority}
-                  loading={priority ? undefined : eager ? "eager" : "lazy"}
-                  className="gallery-image"
-                  style={{ width: "100%", height: "auto", display: "block" }}
-                  ref={(el) => { if (el?.complete) el.classList.add("is-loaded"); }}
-                  onLoad={(e) => e.currentTarget.classList.add("is-loaded")}
-                  unoptimized
-                />
-              </button>
-            </div>
-          );
-        })}
+        {columns.map((col, ci) => (
+          <div key={ci} className="masonry-col">
+            {col.map(({ image, i }) => {
+              const eager = i < EAGER_COUNT;
+              const priority = i < PRIORITY_COUNT;
+              return (
+                <div key={image.src} className="masonry-item">
+                  <button
+                    type="button"
+                    className="image-tile"
+                    onClick={() => setActiveIndex(i)}
+                    aria-label={`Open photo ${i + 1}`}
+                  >
+                    <Image
+                      src={image.src}
+                      alt={image.alt}
+                      width={image.width ?? 2000}
+                      height={image.height ?? 1333}
+                      sizes="(max-width: 899px) 50vw, (max-width: 1399px) 34vw, 25vw"
+                      priority={priority}
+                      loading={priority ? undefined : eager ? "eager" : "lazy"}
+                      className="gallery-image"
+                      style={{ width: "100%", height: "auto", display: "block" }}
+                      ref={(el) => { if (el?.complete) el.classList.add("is-loaded"); }}
+                      onLoad={(e) => e.currentTarget.classList.add("is-loaded")}
+                      unoptimized
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
 
-      {mounted && activeImage
-        ? createPortal(
-            <div
-              className="lightbox"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Photo viewer"
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
-              <div className="lightbox-topbar">
-                <span className="lightbox-counter">{counter}</span>
-                <button type="button" className="lightbox-close" onClick={close} aria-label="Close">
-                  Close
-                </button>
-              </div>
-
-              <div
-                className="lightbox-stage"
-                onClick={(e) => { if (e.target === e.currentTarget && !swipeLock.current) close(); }}
-              >
-                <Image
-                  key={activeImage.src}
-                  src={activeImage.src}
-                  alt={activeImage.alt}
-                  width={activeImage.width ?? 2000}
-                  height={activeImage.height ?? 1333}
-                  priority
-                  className="lightbox-image"
-                  style={{ width: "auto", height: "auto" }}
-                  unoptimized
-                />
-              </div>
-
-              <div className="lightbox-hint">← → navigate &nbsp;&nbsp;·&nbsp;&nbsp; esc close</div>
-
-              {total > 1 && (
-                <>
-                  <button type="button" className="lightbox-prev" onClick={showPrev} aria-label="Previous">‹</button>
-                  <button type="button" className="lightbox-next" onClick={showNext} aria-label="Next">›</button>
-                </>
-              )}
-            </div>,
-            document.body,
-          )
-        : null}
+      {mounted && activeImage ? createPortal(
+        <div
+          className="lightbox"
+          role="dialog" aria-modal="true" aria-label="Photo viewer"
+          onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
+        >
+          <div className="lightbox-topbar">
+            <span className="lightbox-counter">{counter}</span>
+            <button type="button" className="lightbox-close" onClick={close} aria-label="Close">Close</button>
+          </div>
+          <div
+            className="lightbox-stage"
+            onClick={(e) => { if (e.target === e.currentTarget && !swipeLock.current) close(); }}
+          >
+            <Image
+              key={activeImage.src}
+              src={activeImage.src}
+              alt={activeImage.alt}
+              width={activeImage.width ?? 2000}
+              height={activeImage.height ?? 1333}
+              priority
+              className="lightbox-image"
+              style={{ width: "auto", height: "auto" }}
+              unoptimized
+            />
+          </div>
+          <div className="lightbox-hint">← → navigate &nbsp;&nbsp;·&nbsp;&nbsp; esc close</div>
+          {total > 1 && (
+            <>
+              <button type="button" className="lightbox-prev" onClick={showPrev} aria-label="Previous">‹</button>
+              <button type="button" className="lightbox-next" onClick={showNext} aria-label="Next">›</button>
+            </>
+          )}
+        </div>,
+        document.body,
+      ) : null}
     </div>
   );
 }
