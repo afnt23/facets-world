@@ -30,6 +30,7 @@ export default function Gallery({ images }: GalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const [colCount, setColCount] = useState(2);
+  const [viewportWidth, setViewportWidth] = useState(375);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const swipeLock = useRef(false);
   const masonryRef = useRef<HTMLDivElement>(null);
@@ -45,6 +46,7 @@ export default function Gallery({ images }: GalleryProps) {
   useLayoutEffect(() => {
     const update = () => {
       const w = window.innerWidth;
+      setViewportWidth(w);
       setColCount(w >= 1400 ? 4 : w >= 900 ? 3 : 2);
     };
     update();
@@ -54,6 +56,12 @@ export default function Gallery({ images }: GalleryProps) {
 
   // ── greedy column distribution ────────────────────────
   const columns = useMemo(() => {
+    // Estimate column width to convert the 10px gap into ratio units so the
+    // greedy algorithm accounts for the gap cost each item adds to a column.
+    const pagePad = Math.min(44, Math.max(20, viewportWidth * 0.035));
+    const colWidth = Math.max(80, (viewportWidth - 2 * pagePad - (colCount - 1) * 10) / colCount);
+    const gapRatio = 10 / colWidth;
+
     const cols: Array<Array<{ image: GalleryImage; i: number }>> =
       Array.from({ length: colCount }, () => []);
     const heights = new Array(colCount).fill(0);
@@ -64,10 +72,10 @@ export default function Gallery({ images }: GalleryProps) {
         if (heights[c] < heights[shortest]) shortest = c;
       }
       cols[shortest].push({ image, i });
-      heights[shortest] += ratio;
+      heights[shortest] += ratio + gapRatio;
     });
     return cols;
-  }, [images, colCount]);
+  }, [images, colCount, viewportWidth]);
 
   // ── scroll reveal ────────────────────────────────────
   useEffect(() => {
