@@ -93,6 +93,9 @@ export default function Home() {
         <Gallery images={images} />
       </main>
 
+      <footer className="site-footer">
+        © 2026 Arthur Fontanelli. All photographs are original works and may not be reproduced, distributed, or used without written permission.
+      </footer>
 
     </div>
   );

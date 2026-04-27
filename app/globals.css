@@ -407,6 +407,19 @@ a { color: inherit; text-decoration: none; }
 }
 
 
+/* ─── footer ──────────────────────────────────────────── */
+.site-footer {
+  background: #fff;
+  padding: clamp(24px, 3vw, 40px) var(--page-pad);
+  border-top: 1px solid #e8e4df;
+  font-family: var(--font-editorial);
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #999;
+  text-align: center;
+}
+
 /* ─── keyframes ───────────────────────────────────────── */
 @keyframes a-fade-up {
   from { opacity: 0; transform: translateY(10px); }
