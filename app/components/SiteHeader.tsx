@@ -31,11 +31,7 @@ export default function SiteHeader({ eyebrow, title, navLinks }: SiteHeaderProps
 
         {/* bottom bar */}
         <div className="intro-foot">
-          <span>Photography</span>
-          <a href={navLinks[0]?.href ?? "#"} className="intro-scroll" aria-label="Scroll to gallery">
-            <span>Scroll</span>
-            <div className="intro-scroll-line" />
-          </a>
+          <a href="mailto:arthur.fnta@gmail.com" className="intro-email">arthur.fnta@gmail.com</a>
         </div>
 
       </div>

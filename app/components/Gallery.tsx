@@ -38,7 +38,7 @@ export default function Gallery({ images }: GalleryProps) {
   // ── scroll to top on load ────────────────────────────
   useEffect(() => {
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: "instant" });
   }, []);
 
   // ── responsive column count (before first paint) ─────
