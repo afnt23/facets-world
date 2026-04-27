@@ -306,7 +306,7 @@ a { color: inherit; text-decoration: none; }
 .lightbox {
   position: fixed;
   inset: 0;
-  background: #070604;
+  background: #fff;
   display: grid;
   grid-template-rows: auto 1fr auto;
   z-index: 50;
@@ -329,7 +329,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 0.6rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: rgba(237, 233, 223, 0.3);
+  color: rgba(0, 0, 0, 0.35);
 }
 
 .lightbox-counter { font-variant-numeric: tabular-nums; }
@@ -346,7 +346,7 @@ a { color: inherit; text-decoration: none; }
   padding: 6px 0 6px 16px;
   transition: color 0.2s;
 }
-.lightbox-close:hover { color: rgba(237, 233, 223, 0.9); }
+.lightbox-close:hover { color: rgba(0, 0, 0, 0.9); }
 
 /* image area */
 .lightbox-stage {
@@ -386,12 +386,12 @@ a { color: inherit; text-decoration: none; }
   background: transparent;
   cursor: pointer;
   font-size: 1.5rem;
-  color: rgba(237, 233, 223, 0.2);
+  color: rgba(0, 0, 0, 0.2);
   z-index: 1;
   transition: color 0.2s;
 }
 .lightbox-prev:hover,
-.lightbox-next:hover { color: rgba(237, 233, 223, 0.85); }
+.lightbox-next:hover { color: rgba(0, 0, 0, 0.7); }
 .lightbox-prev { left: 0; }
 .lightbox-next { right: 0; }
 
@@ -402,7 +402,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 0.58rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(237, 233, 223, 0.15);
+  color: rgba(0, 0, 0, 0.2);
   text-align: center;
 }
 
