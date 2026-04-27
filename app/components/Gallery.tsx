@@ -54,33 +54,42 @@ export default function Gallery({ images }: GalleryProps) {
 
   // ── greedy column distribution ────────────────────────
   const columns = useMemo(() => {
-    // Cap each column at ⌈N/K⌉ images so counts differ by at most 1.
-    // This bounds the gap-overhead imbalance to ≤10px regardless of aspect ratios.
-    // Within the cap, greedy still picks the shortest column to balance heights.
-    const targetCount = Math.ceil(images.length / colCount);
+    // Approximate column width for converting the 10px CSS gap into ratio units.
+    // This lets the algorithm know that adding an extra image also adds gap height,
+    // so portrait-heavy columns attract fewer landscape images to compensate.
+    const approxColW = colCount === 2 ? 175 : colCount === 3 ? 360 : 310;
+    const gapRatio = 10 / approxColW;
+
     const cols: Array<Array<{ image: GalleryImage; i: number }>> =
       Array.from({ length: colCount }, () => []);
-    const heights = new Array(colCount).fill(0);
-    const counts = new Array(colCount).fill(0);
+    const heights = new Array(colCount).fill(0); // tracks actual pixel-equivalent height
+    const counts  = new Array(colCount).fill(0);
+    // Cap: no column gets more than ⌈N/K⌉ images, bounding count imbalance to ±1.
+    const cap = Math.ceil(images.length / colCount);
 
     images.forEach((image, i) => {
       const ratio = (image.height ?? 1333) / (image.width ?? 2000);
-      // Pick shortest column that hasn't hit its cap.
-      let shortest = -1;
+
+      // Cost of adding this image to column c = current height + gap (if non-empty).
+      // Pick the eligible column with the lowest projected height.
+      let best = -1;
+      let bestH = Infinity;
       for (let c = 0; c < colCount; c++) {
-        if (counts[c] >= targetCount) continue;
-        if (shortest === -1 || heights[c] < heights[shortest]) shortest = c;
+        if (counts[c] >= cap) continue;
+        const h = heights[c] + (counts[c] > 0 ? gapRatio : 0);
+        if (h < bestH) { best = c; bestH = h; }
       }
-      // Fallback: all columns at cap — pick globally shortest.
-      if (shortest === -1) {
-        shortest = 0;
+      // Fallback (all at cap): pick globally shortest.
+      if (best === -1) {
+        best = 0; bestH = heights[0];
         for (let c = 1; c < colCount; c++) {
-          if (heights[c] < heights[shortest]) shortest = c;
+          if (heights[c] < bestH) { best = c; bestH = heights[c]; }
         }
       }
-      cols[shortest].push({ image, i });
-      heights[shortest] += ratio;
-      counts[shortest]++;
+
+      heights[best] = bestH + ratio;
+      counts[best]++;
+      cols[best].push({ image, i });
     });
     return cols;
   }, [images, colCount]);
