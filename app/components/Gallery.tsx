@@ -44,7 +44,7 @@ export default function Gallery({ images }: GalleryProps) {
   useEffect(() => {
     const update = () => {
       const w = window.innerWidth;
-      setColCount(w >= 1400 ? 4 : w >= 900 ? 3 : w >= 480 ? 2 : 1);
+      setColCount(w >= 1400 ? 4 : w >= 900 ? 3 : 2);
     };
     update();
     window.addEventListener("resize", update);
@@ -174,7 +174,7 @@ export default function Gallery({ images }: GalleryProps) {
                       alt={image.alt}
                       width={image.width ?? 2000}
                       height={image.height ?? 1333}
-                      sizes="(max-width: 479px) 100vw, (max-width: 899px) 50vw, (max-width: 1399px) 34vw, 25vw"
+                      sizes="(max-width: 899px) 50vw, (max-width: 1399px) 34vw, 25vw"
                       priority={priority}
                       loading={priority ? undefined : eager ? "eager" : "lazy"}
                       className="gallery-image"
