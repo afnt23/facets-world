@@ -137,11 +137,20 @@ export default function Gallery({ images }: GalleryProps) {
     setTimeout(() => { swipeLock.current = false; }, 250);
   };
 
-  const columns = useMemo(() =>
-    Array.from({ length: colCount }, (_, ci) =>
-      images.map((image, i) => ({ image, i })).filter((_, idx) => idx % colCount === ci)
-    ),
-  [images, colCount]);
+  const columns = useMemo(() => {
+    const cols: Array<Array<{ image: GalleryImage; i: number }>> = Array.from({ length: colCount }, () => []);
+    const heights = new Array(colCount).fill(0);
+    images.forEach((image, i) => {
+      const ratio = (image.height ?? 1333) / (image.width ?? 2000);
+      let shortest = 0;
+      for (let c = 1; c < colCount; c++) {
+        if (heights[c] < heights[shortest]) shortest = c;
+      }
+      cols[shortest].push({ image, i });
+      heights[shortest] += ratio;
+    });
+    return cols;
+  }, [images, colCount]);
 
   const activeImage = activeIndex !== null ? images[activeIndex] : null;
   const counter = activeIndex !== null
