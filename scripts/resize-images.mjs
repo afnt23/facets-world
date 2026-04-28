@@ -3,7 +3,7 @@ import path from "path";
 import { execFileSync } from "child_process";
 
 const ROOT = process.cwd();
-const IMAGE_DIR = path.join(ROOT, "public", "pictures");
+const PICS_DIR = path.join(ROOT, "public", "pictures");
 const CACHE_DIR = path.join(ROOT, ".cache");
 const CACHE_PATH = path.join(CACHE_DIR, "image-resize.json");
 const SIPS_PATH = "/usr/bin/sips";
@@ -11,113 +11,72 @@ const MAX_DIMENSION = Number(process.env.IMAGE_MAX_DIM ?? "2000");
 const JPEG_QUALITY = Number(process.env.IMAGE_JPEG_QUALITY ?? "75");
 
 const IMAGE_EXTENSIONS = new Set([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".tif",
-  ".tiff",
-  ".bmp",
-  ".heic",
+  ".jpg", ".jpeg", ".png", ".gif", ".tif", ".tiff", ".bmp", ".heic",
 ]);
 
-const canResize =
-  process.platform === "darwin" && fs.existsSync(SIPS_PATH);
+const canResize = process.platform === "darwin" && fs.existsSync(SIPS_PATH);
 
 if (!canResize) {
   console.log("Image resize skipped: macOS sips not available.");
   process.exit(0);
 }
 
-if (!fs.existsSync(IMAGE_DIR)) {
+if (!fs.existsSync(PICS_DIR)) {
   console.log("Image resize skipped: public/pictures not found.");
   process.exit(0);
 }
 
 const readCache = () => {
   if (!fs.existsSync(CACHE_PATH)) return {};
-  try {
-    return JSON.parse(fs.readFileSync(CACHE_PATH, "utf8"));
-  } catch {
-    return {};
-  }
+  try { return JSON.parse(fs.readFileSync(CACHE_PATH, "utf8")); } catch { return {}; }
 };
 
-const writeCache = (cache) => {
+const writeCache = (c) => {
   fs.mkdirSync(CACHE_DIR, { recursive: true });
-  fs.writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2));
+  fs.writeFileSync(CACHE_PATH, JSON.stringify(c, null, 2));
 };
 
 const cache = readCache();
 const nextCache = {};
 let processed = 0;
 
-for (const file of fs.readdirSync(IMAGE_DIR)) {
-  const ext = path.extname(file).toLowerCase();
-  if (!IMAGE_EXTENSIONS.has(ext)) continue;
+// Walk country subfolders
+for (const country of fs.readdirSync(PICS_DIR).sort()) {
+  const countryDir = path.join(PICS_DIR, country);
+  if (!fs.statSync(countryDir).isDirectory()) continue;
 
-  const filePath = path.join(IMAGE_DIR, file);
-  const stat = fs.statSync(filePath);
-  if (!stat.isFile()) continue;
+  for (const file of fs.readdirSync(countryDir).sort()) {
+    const ext = path.extname(file).toLowerCase();
+    if (!IMAGE_EXTENSIONS.has(ext)) continue;
 
-  const cacheEntry = cache[file];
-  if (cacheEntry && cacheEntry.mtimeMs === stat.mtimeMs && cacheEntry.size === stat.size) {
-    nextCache[file] = cacheEntry;
-    continue;
-  }
+    const filePath = path.join(countryDir, file);
+    const stat = fs.statSync(filePath);
+    const cacheKey = `${country}/${file}`;
+    const cached = cache[cacheKey];
 
-  const tempPath = path.join(IMAGE_DIR, `.tmp-resize-${Date.now()}-${file}`);
-  const args =
-    ext === ".jpg" || ext === ".jpeg"
-      ? [
-          "-Z",
-          `${MAX_DIMENSION}`,
-          "-s",
-          "format",
-          "jpeg",
-          "-s",
-          "formatOptions",
-          `${JPEG_QUALITY}`,
-          filePath,
-          "--out",
-          tempPath,
-        ]
-      : ["-Z", `${MAX_DIMENSION}`, filePath, "--out", tempPath];
-
-  try {
-    execFileSync(SIPS_PATH, args, { stdio: "ignore" });
-    fs.renameSync(tempPath, filePath);
-    const updated = fs.statSync(filePath);
-    nextCache[file] = { mtimeMs: updated.mtimeMs, size: updated.size };
-    processed += 1;
-  } catch (error) {
-    if (fs.existsSync(tempPath)) {
-      fs.unlinkSync(tempPath);
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+      nextCache[cacheKey] = cached;
+      continue;
     }
-    console.warn(`Image resize failed for ${file}.`);
+
+    const tempPath = path.join(countryDir, `.tmp-resize-${Date.now()}-${file}`);
+    const args =
+      ext === ".jpg" || ext === ".jpeg"
+        ? ["-Z", `${MAX_DIMENSION}`, "-s", "format", "jpeg", "-s", "formatOptions", `${JPEG_QUALITY}`, filePath, "--out", tempPath]
+        : ["-Z", `${MAX_DIMENSION}`, filePath, "--out", tempPath];
+
+    try {
+      execFileSync(SIPS_PATH, args, { stdio: "ignore" });
+      fs.renameSync(tempPath, filePath);
+      const updated = fs.statSync(filePath);
+      nextCache[cacheKey] = { mtimeMs: updated.mtimeMs, size: updated.size };
+      processed += 1;
+    } catch {
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      console.warn(`Image resize failed for ${country}/${file}.`);
+    }
   }
 }
 
 writeCache(nextCache);
 console.log(`Image resize complete. Updated ${processed} file(s).`);
-
-// Regenerate images.json manifest with current dimensions
-const manifestPath = path.join(ROOT, "public", "images.json");
-const manifest = [];
-for (const file of fs.readdirSync(IMAGE_DIR)) {
-  const ext = path.extname(file).toLowerCase();
-  if (!IMAGE_EXTENSIONS.has(ext)) continue;
-  const filePath = path.join(IMAGE_DIR, file);
-  if (!fs.statSync(filePath).isFile()) continue;
-  try {
-    const out = execFileSync(SIPS_PATH, ["-g", "pixelWidth", "-g", "pixelHeight", filePath], { encoding: "utf8" });
-    const width = Number(out.match(/pixelWidth: (\d+)/)?.[1]);
-    const height = Number(out.match(/pixelHeight: (\d+)/)?.[1]);
-    if (width && height) manifest.push({ file, width, height });
-  } catch {
-    manifest.push({ file });
-  }
-}
-manifest.sort((a, b) => a.file.localeCompare(b.file));
-fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-console.log(`images.json updated: ${manifest.length} entries.`);
