@@ -274,10 +274,10 @@ export default function Gallery({ images }: GalleryProps) {
               style={{ width: "auto", height: "auto" }}
               unoptimized
             />
-            {activeImage.country && (
-              <span className="lightbox-country">{activeImage.country}</span>
-            )}
           </div>
+          {activeImage.country && (
+            <span className="lightbox-country">{activeImage.country}</span>
+          )}
           <div className="lightbox-hint">← → navigate &nbsp;&nbsp;·&nbsp;&nbsp; esc close</div>
           {total > 1 && (
             <>
