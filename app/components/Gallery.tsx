@@ -182,7 +182,7 @@ export default function Gallery({ images }: GalleryProps) {
     : "";
 
   return (
-    <div className="gallery">
+    <div className="gallery" onContextMenu={(e) => e.preventDefault()}>
       {/* ── lead + country filter ── */}
       <div className="gallery-lead">
         <span>{activeCountry ?? "Selected Works"}</span>
@@ -238,6 +238,7 @@ export default function Gallery({ images }: GalleryProps) {
                       style={{ width: "100%", height: "auto", display: "block" }}
                       ref={(el) => { if (el?.complete) el.classList.add("is-loaded"); }}
                       onLoad={(e) => e.currentTarget.classList.add("is-loaded")}
+                      draggable={false}
                       unoptimized
                     />
                   </button>
@@ -254,6 +255,7 @@ export default function Gallery({ images }: GalleryProps) {
           className="lightbox"
           role="dialog" aria-modal="true" aria-label="Photo viewer"
           onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
+          onContextMenu={(e) => e.preventDefault()}
         >
           <div className="lightbox-topbar">
             <span className="lightbox-counter">{counter}</span>
@@ -272,6 +274,7 @@ export default function Gallery({ images }: GalleryProps) {
               priority
               className="lightbox-image"
               style={{ width: "auto", height: "auto" }}
+              draggable={false}
               unoptimized
             />
           </div>
